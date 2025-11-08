@@ -65,40 +65,55 @@ git push origin v1.0.0
 3. Enter the version number (e.g., `1.0.0`)
 4. Click "Run workflow"
 
-## Publishing to npm
+## Publishing to GitHub Packages
 
-Both workflows support publishing to npm, but it requires configuration:
+Both workflows automatically publish to GitHub Packages using the `GITHUB_TOKEN` (no additional configuration needed).
 
-### Setup npm Publishing
-
-1. Create an npm account and get an API token:
-   - Go to https://www.npmjs.com/
-   - Create an account (if needed)
-   - Go to Account Settings → Access Tokens
-   - Generate a new "Automation" token
-
-2. Add the token to GitHub Secrets:
-   - Go to your repository → Settings → Secrets and variables → Actions
-   - Click "New repository secret"
-   - Name: `NPM_TOKEN`
-   - Value: Your npm token
-   - Click "Add secret"
-
-3. Next time a release runs, it will automatically publish to npm!
-
-### npm Publishing Behavior
+### GitHub Packages Behavior
 
 - **Pre-releases**: Published with the `pre-release` tag
   ```bash
-  npm install featbit-mcp-server@pre-release
+  npm install @tidusjar/featbit-mcp-server@pre-release
   ```
 
 - **Stable releases**: Published with the `latest` tag (default)
   ```bash
-  npm install featbit-mcp-server
+  npm install @tidusjar/featbit-mcp-server
   ```
 
-If `NPM_TOKEN` is not configured, the workflows will skip npm publishing but still create GitHub releases.
+### Authentication for GitHub Packages
+
+To install from GitHub Packages, you need to authenticate:
+
+1. Create a personal access token (PAT) with `read:packages` scope:
+   - Go to https://github.com/settings/tokens
+   - Click "Generate new token (classic)"
+   - Select `read:packages` scope
+   - Generate and copy the token
+
+2. Authenticate with npm:
+   ```bash
+   npm login --registry=https://npm.pkg.github.com --scope=@tidusjar
+   # Username: your-github-username
+   # Password: your-personal-access-token
+   # Email: your-email
+   ```
+
+3. Install the package:
+   ```bash
+   npm install @tidusjar/featbit-mcp-server
+   ```
+
+### No Authentication Required - Use Release Tarballs
+
+The easiest way to install without authentication is to download the `.tgz` file from the GitHub release:
+
+1. Go to the [Releases page](https://github.com/tidusjar/featbit-mcp/releases)
+2. Download the `.tgz` file
+3. Install it:
+   ```bash
+   npm install -g /path/to/tidusjar-featbit-mcp-server-VERSION.tgz
+   ```
 
 ## Version Numbering
 
@@ -120,38 +135,39 @@ Use semantic versioning (SemVer):
 
 ## Installation from Releases
 
-### From npm
+### From GitHub Packages (Requires Authentication)
 
 ```bash
+# Authenticate first (see "Authentication for GitHub Packages" above)
+
 # Latest stable version
-npm install featbit-mcp-server
+npm install @tidusjar/featbit-mcp-server
 
 # Specific version
-npm install featbit-mcp-server@1.0.0
+npm install @tidusjar/featbit-mcp-server@1.0.0
 
 # Latest pre-release
-npm install featbit-mcp-server@pre-release
+npm install @tidusjar/featbit-mcp-server@pre-release
 ```
 
-### From GitHub Release
+### From GitHub Release Tarball (Recommended - No Authentication)
 
 1. Go to the [Releases page](https://github.com/tidusjar/featbit-mcp/releases)
 2. Download the `.tgz` file from the desired release
-3. Install it:
+3. Install it globally:
    ```bash
-   npm install /path/to/featbit-mcp-server-1.0.0.tgz
+   npm install -g /path/to/tidusjar-featbit-mcp-server-1.0.0.tgz
    ```
 
-### Using npx (Recommended for Claude Desktop)
+### For Claude Desktop
 
-No installation needed! Use `npx` to run the latest version:
+After installing globally from a tarball, use the binary directly:
 
 ```json
 {
   "mcpServers": {
     "featbit": {
-      "command": "npx",
-      "args": ["-y", "featbit-mcp-server"],
+      "command": "featbit-mcp-server",
       "env": {
         "FEATBIT_API_TOKEN": "your-api-token",
         "FEATBIT_ENV_ID": "your-env-id"
@@ -169,11 +185,12 @@ No installation needed! Use `npx` to run the latest version:
 - Verify the workflow has permissions to create releases
 - Check the Actions tab for error messages
 
-### npm publish failed
+### GitHub Packages publish failed
 
-- Verify `NPM_TOKEN` is set in repository secrets
-- Check that the package name is available on npm
-- Ensure you have permission to publish the package
+- Check that the workflow has `packages: write` permission
+- Verify the package name is scoped correctly (`@tidusjar/featbit-mcp-server`)
+- Check the Actions logs for detailed error messages
+- Ensure the repository is public or you have the correct package visibility settings
 
 ### Version conflicts
 

@@ -1,5 +1,5 @@
 {
-  "name": "featbit-mcp-server",
+  "name": "@tidusjar/featbit-mcp-server",
   "version": "1.0.0",
   "description": "MCP server for FeatBit feature flag management",
   "type": "module",
@@ -14,8 +14,10 @@
   ],
   "scripts": {
     "build": "tsc",
-    "prepare": "npm run build",
     "watch": "tsc --watch"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   },
   "keywords": [
     "mcp",

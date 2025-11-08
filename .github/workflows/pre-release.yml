@@ -34,7 +34,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@tidusjar'
 
       - name: Install dependencies
         run: npm ci || npm install
@@ -90,28 +91,34 @@ jobs:
 
             ### Installation
 
-            **Via npm:**
+            **Via GitHub Packages:**
+
+            First, authenticate with GitHub Packages by creating a `.npmrc` file or running:
+            ```bash
+            npm login --registry=https://npm.pkg.github.com --scope=@tidusjar
+            ```
+
+            Then install:
             ```bash
             npm install ${{ steps.package.outputs.name }}@${{ steps.version.outputs.version }}
             ```
 
-            **Via GitHub release:**
+            **Via GitHub release (no authentication needed):**
             Download the `.tgz` file below and install with:
             ```bash
-            npm install featbit-mcp-server-${{ steps.version.outputs.version }}.tgz
+            npm install tidusjar-featbit-mcp-server-${{ steps.version.outputs.version }}.tgz
             ```
 
-            **For Claude Desktop:**
-            Add to your `claude_desktop_config.json`:
+            **For Claude Desktop (using tarball):**
+            1. Download the `.tgz` file from this release
+            2. Install it globally: `npm install -g /path/to/tidusjar-featbit-mcp-server-${{ steps.version.outputs.version }}.tgz`
+            3. Add to your `claude_desktop_config.json`:
             ```json
             {
               "mcpServers": {
                 "featbit": {
-                  "command": "npx",
-                  "args": [
-                    "-y",
-                    "${{ steps.package.outputs.name }}@${{ steps.version.outputs.version }}"
-                  ],
+                  "command": "node",
+                  "args": ["/path/to/node_modules/${{ steps.package.outputs.name }}/build/index.js"],
                   "env": {
                     "FEATBIT_API_TOKEN": "your-api-token",
                     "FEATBIT_ENV_ID": "your-env-id"
@@ -132,17 +139,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish to npm (optional)
-        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+      - name: Publish to GitHub Packages
         run: |
-          if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
-            echo "Publishing to npm..."
-            npm publish --tag pre-release --access public || echo "Publish failed or package already exists"
-          else
-            echo "NPM_TOKEN not set, skipping npm publish"
-          fi
+          echo "Publishing to GitHub Packages..."
+          npm publish --tag pre-release || echo "Publish failed or package already exists"
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
       - name: Summary

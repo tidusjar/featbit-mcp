@@ -20,9 +20,11 @@ This MCP server provides the following tools:
 
 ## Installation
 
+### For Development
+
 1. Clone this repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/tidusjar/featbit-mcp.git
 cd featbit-mcp
 ```
 
@@ -34,6 +36,33 @@ npm install
 3. Build the project:
 ```bash
 npm run build
+```
+
+### From GitHub Packages
+
+To install from GitHub Packages, first authenticate:
+
+1. Create a personal access token (PAT) with `read:packages` scope at https://github.com/settings/tokens
+
+2. Authenticate with GitHub Packages:
+```bash
+npm login --registry=https://npm.pkg.github.com --scope=@tidusjar
+# Username: your-github-username
+# Password: your-personal-access-token
+# Email: your-email
+```
+
+3. Install the package:
+```bash
+npm install @tidusjar/featbit-mcp-server
+```
+
+### From GitHub Release (Recommended - No Authentication Required)
+
+Download the latest `.tgz` file from the [Releases page](https://github.com/tidusjar/featbit-mcp/releases) and install it:
+
+```bash
+npm install -g /path/to/tidusjar-featbit-mcp-server-VERSION.tgz
 ```
 
 ## Configuration
@@ -62,11 +91,29 @@ The server requires the following environment variables:
 
 ## Usage with Claude Desktop
 
-Add this server to your Claude Desktop configuration file:
+After installing the package (see Installation section), add this server to your Claude Desktop configuration file:
 
 ### macOS
 Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
+**If installed globally from tarball:**
+```json
+{
+  "mcpServers": {
+    "featbit": {
+      "command": "featbit-mcp-server",
+      "env": {
+        "FEATBIT_API_TOKEN": "api-your-token-here",
+        "FEATBIT_ENV_ID": "your-env-id-here",
+        "FEATBIT_API_URL": "https://app-api.featbit.co",
+        "FEATBIT_ORGANIZATION": "your-org-name"
+      }
+    }
+  }
+}
+```
+
+**If running from development directory:**
 ```json
 {
   "mcpServers": {
@@ -259,23 +306,26 @@ This project uses automated GitHub Actions workflows for releases:
 - **Pre-releases**: Automatically created when code is pushed to `claude/**` branches
 - **Stable releases**: Created by pushing version tags (e.g., `git tag v1.0.0 && git push origin v1.0.0`)
 
+Releases are published to GitHub Packages and include downloadable `.tgz` files on the [Releases page](https://github.com/tidusjar/featbit-mcp/releases).
+
 See [.github/RELEASE.md](.github/RELEASE.md) for detailed release process documentation.
 
 ### Installation from Releases
 
-**Latest stable version:**
+**From GitHub Packages (requires authentication):**
 ```bash
-npm install featbit-mcp-server
+# Authenticate first (see Installation section above)
+npm install @tidusjar/featbit-mcp-server
+
+# Or for pre-release:
+npm install @tidusjar/featbit-mcp-server@pre-release
 ```
 
-**Latest pre-release:**
-```bash
-npm install featbit-mcp-server@pre-release
-```
+**From GitHub Release tarball (recommended, no authentication):**
 
-**Using npx (no installation needed):**
+Download the `.tgz` file from the [Releases page](https://github.com/tidusjar/featbit-mcp/releases) and install:
 ```bash
-npx -y featbit-mcp-server
+npm install -g /path/to/downloaded/tidusjar-featbit-mcp-server-VERSION.tgz
 ```
 
 ## License
