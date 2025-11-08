@@ -262,7 +262,7 @@ async function handleGetFeatureFlag(args: any): Promise<any> {
 async function handleCreateFeatureFlag(args: any): Promise<any> {
   const endpoint = `/api/v1/envs/${config.envId}/feature-flags`;
 
-  const body = {
+  const body: any = {
     envId: config.envId,
     name: args.name,
     key: args.key,
