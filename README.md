@@ -252,6 +252,32 @@ The requested feature flag or environment does not exist. Check:
 - The environment ID is correct
 - The feature flag key is spelled correctly
 
+## Releases
+
+This project uses automated GitHub Actions workflows for releases:
+
+- **Pre-releases**: Automatically created when code is pushed to `claude/**` branches
+- **Stable releases**: Created by pushing version tags (e.g., `git tag v1.0.0 && git push origin v1.0.0`)
+
+See [.github/RELEASE.md](.github/RELEASE.md) for detailed release process documentation.
+
+### Installation from Releases
+
+**Latest stable version:**
+```bash
+npm install featbit-mcp-server
+```
+
+**Latest pre-release:**
+```bash
+npm install featbit-mcp-server@pre-release
+```
+
+**Using npx (no installation needed):**
+```bash
+npx -y featbit-mcp-server
+```
+
 ## License
 
 MIT
@@ -259,6 +285,8 @@ MIT
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+For information about the release process, see [.github/RELEASE.md](.github/RELEASE.md).
 
 ## Support
 

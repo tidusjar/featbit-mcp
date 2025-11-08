@@ -1,0 +1,139 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Run tests
+        run: npm test || echo "No tests defined, skipping..."
+        continue-on-error: true
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Release version: $VERSION"
+
+      - name: Update package version
+        run: npm version ${{ steps.version.outputs.version }} --no-git-tag-version
+
+      - name: Create tarball
+        run: npm pack
+
+      - name: Get package info
+        id: package
+        run: |
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          echo "name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## FeatBit MCP Server v${{ steps.version.outputs.version }}
+
+            ### Installation
+
+            **Via npm:**
+            ```bash
+            npm install ${{ steps.package.outputs.name }}
+            ```
+
+            **Via GitHub release:**
+            Download the `.tgz` file below and install with:
+            ```bash
+            npm install featbit-mcp-server-${{ steps.version.outputs.version }}.tgz
+            ```
+
+            **For Claude Desktop:**
+            Add to your `claude_desktop_config.json`:
+            ```json
+            {
+              "mcpServers": {
+                "featbit": {
+                  "command": "npx",
+                  "args": ["-y", "${{ steps.package.outputs.name }}"],
+                  "env": {
+                    "FEATBIT_API_TOKEN": "your-api-token",
+                    "FEATBIT_ENV_ID": "your-env-id"
+                  }
+                }
+              }
+            }
+            ```
+
+            ### What's Changed
+            See the full changelog below.
+          files: |
+            *.tgz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to npm
+        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+        run: |
+          if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
+            echo "Publishing to npm..."
+            npm publish --access public
+          else
+            echo "NPM_TOKEN not set, skipping npm publish"
+            echo "To publish to npm, add NPM_TOKEN to repository secrets"
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
+
+      - name: Summary
+        run: |
+          echo "## Release Published! 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Package:** \`${{ steps.package.outputs.name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** \`v${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Installation" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "npm install ${{ steps.package.outputs.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

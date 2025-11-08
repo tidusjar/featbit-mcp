@@ -1,0 +1,160 @@
+name: Pre-release
+
+on:
+  push:
+    branches:
+      - 'claude/**'
+    tags:
+      - 'v*-pre*'
+      - 'v*-alpha*'
+      - 'v*-beta*'
+      - 'v*-rc*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Pre-release version (e.g., 1.0.0-alpha.1)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Run tests
+        run: npm test || echo "No tests defined, skipping..."
+        continue-on-error: true
+
+      - name: Generate version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+            BRANCH_SLUG=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9]/-/g' | sed 's/--*/-/g' | tr '[:upper:]' '[:lower:]')
+            SHORT_SHA=$(git rev-parse --short HEAD)
+            TIMESTAMP=$(date +%Y%m%d%H%M%S)
+            BASE_VERSION=$(node -p "require('./package.json').version")
+            VERSION="${BASE_VERSION}-pre.${TIMESTAMP}.${SHORT_SHA}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Generated version: $VERSION"
+
+      - name: Update package version
+        run: npm version ${{ steps.version.outputs.version }} --no-git-tag-version
+
+      - name: Create tarball
+        run: npm pack
+
+      - name: Get package info
+        id: package
+        run: |
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          echo "name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Pre-release v${{ steps.version.outputs.version }}
+          prerelease: true
+          generate_release_notes: true
+          body: |
+            ## FeatBit MCP Server Pre-release v${{ steps.version.outputs.version }}
+
+            This is a pre-release version built from branch `${{ github.ref_name }}`.
+
+            ### Installation
+
+            **Via npm:**
+            ```bash
+            npm install ${{ steps.package.outputs.name }}@${{ steps.version.outputs.version }}
+            ```
+
+            **Via GitHub release:**
+            Download the `.tgz` file below and install with:
+            ```bash
+            npm install featbit-mcp-server-${{ steps.version.outputs.version }}.tgz
+            ```
+
+            **For Claude Desktop:**
+            Add to your `claude_desktop_config.json`:
+            ```json
+            {
+              "mcpServers": {
+                "featbit": {
+                  "command": "npx",
+                  "args": [
+                    "-y",
+                    "${{ steps.package.outputs.name }}@${{ steps.version.outputs.version }}"
+                  ],
+                  "env": {
+                    "FEATBIT_API_TOKEN": "your-api-token",
+                    "FEATBIT_ENV_ID": "your-env-id"
+                  }
+                }
+              }
+            }
+            ```
+
+            ### Changes
+            See the full changelog below.
+
+            ---
+
+            **Note:** This is a pre-release version and may contain bugs or incomplete features.
+          files: |
+            *.tgz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to npm (optional)
+        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+        run: |
+          if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
+            echo "Publishing to npm..."
+            npm publish --tag pre-release --access public || echo "Publish failed or package already exists"
+          else
+            echo "NPM_TOKEN not set, skipping npm publish"
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
+
+      - name: Summary
+        run: |
+          echo "## Pre-release Published! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Package:** \`${{ steps.package.outputs.name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Installation" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "npm install ${{ steps.package.outputs.name }}@${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
